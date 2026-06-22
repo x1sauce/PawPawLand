@@ -1,0 +1,21 @@
+.DS_Store
+.env
+.env.local
+.env.*.local
+
+# Node
+node_modules/
+dist/
+npm-debug.log*
+
+# NestJS
+backend/dist/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Docker
+*.log
