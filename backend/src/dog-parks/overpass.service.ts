@@ -4,9 +4,10 @@ import { Injectable, Logger } from '@nestjs/common';
 export type OverpassElement = {
   type: 'node' | 'way' | 'relation';
   id: number;
-  lat?: number;   // present on nodes
-  lon?: number;   // present on nodes
-  center?: {      // present on ways/relations — the centroid
+  lat?: number; // present on nodes
+  lon?: number; // present on nodes
+  center?: {
+    // present on ways/relations — the centroid
     lat: number;
     lon: number;
   };
@@ -83,7 +84,9 @@ export class OverpassService {
     });
 
     if (!response.ok) {
-      throw new Error(`Overpass API error: ${response.status} ${response.statusText}`);
+      throw new Error(
+        `Overpass API error: ${response.status} ${response.statusText}`,
+      );
     }
 
     const data = (await response.json()) as OverpassResponse;
@@ -97,7 +100,9 @@ export class OverpassService {
    * Extracts a clean lat/lng from an element regardless of whether
    * it's a node (has lat/lon directly) or a way (has a center object).
    */
-  getCoordinates(element: OverpassElement): { lat: number; lng: number } | null {
+  getCoordinates(
+    element: OverpassElement,
+  ): { lat: number; lng: number } | null {
     if (element.lat !== undefined && element.lon !== undefined) {
       return { lat: element.lat, lng: element.lon };
     }

@@ -1,5 +1,12 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import {
+  BadRequestException,
+  Controller,
+  Get,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { DogParkResponseDto } from './dto/dog-park-response.dto.js';
+import { ImportResponseDto } from './dto/import-response.dto.js';
 import { NearbyQueryDto } from './dto/nearby-query.dto.js';
 import { DogParksService } from './dog-parks.service.js';
 
@@ -17,11 +24,26 @@ export class DogParksController {
   }
 
   /**
+   * POST /dog-parks/import?lat=40.78&lng=-73.97&radiusMiles=10
+   *
+   * Fetches dog parks from OpenStreetMap around the given point and saves them.
+   * Use GPS coordinates or any location the user picks on a map.
+   */
+  @Post('import')
+  importFromLocation(
+    @Query('lat') lat: string,
+    @Query('lng') lng: string,
+    @Query('radiusMiles') radiusMiles?: string,
+    @Query('radiusKm') radiusKm?: string,
+  ): Promise<ImportResponseDto> {
+    return this.dogParksService.importFromLocation(
+      this.parseLocationQuery(lat, lng, radiusMiles, radiusKm),
+    );
+  }
+
+  /**
    * GET /dog-parks/nearby?lat=34.05&lng=-118.24&radiusMiles=5
    * GET /dog-parks/nearby?lat=34.05&lng=-118.24&radiusKm=8
-   *
-   * @Query() pulls individual query string parameters and maps them to the DTO.
-   * The + prefix converts the string value to a number (query params are always strings).
    */
   @Get('nearby')
   findNearby(
@@ -30,14 +52,52 @@ export class DogParksController {
     @Query('radiusMiles') radiusMiles?: string,
     @Query('radiusKm') radiusKm?: string,
   ): Promise<DogParkResponseDto[]> {
-    const query: NearbyQueryDto = {
-      lat: parseFloat(lat),
-      lng: parseFloat(lng),
-      radiusMiles: radiusMiles !== undefined ? parseFloat(radiusMiles) : undefined,
-      radiusKm: radiusKm !== undefined ? parseFloat(radiusKm) : undefined,
-    };
+    return this.dogParksService.findNearby(
+      this.parseLocationQuery(lat, lng, radiusMiles, radiusKm),
+    );
+  }
 
-    return this.dogParksService.findNearby(query);
+  private parseLocationQuery(
+    lat: string,
+    lng: string,
+    radiusMiles?: string,
+    radiusKm?: string,
+  ): NearbyQueryDto {
+    const parsedLat = parseFloat(lat);
+    const parsedLng = parseFloat(lng);
+
+    if (!Number.isFinite(parsedLat) || parsedLat < -90 || parsedLat > 90) {
+      throw new BadRequestException('lat must be a number between -90 and 90');
+    }
+    if (!Number.isFinite(parsedLng) || parsedLng < -180 || parsedLng > 180) {
+      throw new BadRequestException(
+        'lng must be a number between -180 and 180',
+      );
+    }
+
+    let parsedRadiusMiles: number | undefined;
+    let parsedRadiusKm: number | undefined;
+
+    if (radiusMiles !== undefined) {
+      parsedRadiusMiles = parseFloat(radiusMiles);
+      if (!Number.isFinite(parsedRadiusMiles) || parsedRadiusMiles <= 0) {
+        throw new BadRequestException('radiusMiles must be a positive number');
+      }
+    }
+
+    if (radiusKm !== undefined) {
+      parsedRadiusKm = parseFloat(radiusKm);
+      if (!Number.isFinite(parsedRadiusKm) || parsedRadiusKm <= 0) {
+        throw new BadRequestException('radiusKm must be a positive number');
+      }
+    }
+
+    return {
+      lat: parsedLat,
+      lng: parsedLng,
+      radiusMiles: parsedRadiusMiles,
+      radiusKm: parsedRadiusKm,
+    };
   }
 }
 

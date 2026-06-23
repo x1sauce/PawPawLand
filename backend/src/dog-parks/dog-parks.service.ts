@@ -1,7 +1,8 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { DogParkResponseDto } from './dto/dog-park-response.dto.js';
+import { ImportResponseDto } from './dto/import-response.dto.js';
 import { NearbyQueryDto } from './dto/nearby-query.dto.js';
 import { DogPark } from './entities/dog-park.entity.js';
 import { OverpassService } from './overpass.service.js';
@@ -10,9 +11,10 @@ import { OverpassService } from './overpass.service.js';
 const METERS_PER_MILE = 1609.344;
 const METERS_PER_KM = 1000;
 const DEFAULT_RADIUS_MILES = 10;
+const METERS_PER_DEGREE_LAT = 111_320;
 
 @Injectable()
-export class DogParksService implements OnModuleInit {
+export class DogParksService {
   private readonly logger = new Logger(DogParksService.name);
 
   constructor(
@@ -22,25 +24,25 @@ export class DogParksService implements OnModuleInit {
   ) {}
 
   /**
-   * On startup, if the database is empty, seed it with real dog parks
-   * from OpenStreetMap for the Los Angeles area.
-   *
-   * Bounding box covers greater LA:
-   * south: 33.7, west: -118.7, north: 34.3, east: -118.1
+   * Fetches dog parks from OpenStreetMap around a point (GPS or user-picked),
+   * then upserts them into the database.
    */
-  async onModuleInit(): Promise<void> {
-    const count = await this.dogParksRepository.count();
-    if (count > 0) {
-      this.logger.log(`Database already has ${count} dog parks — skipping seed`);
-      return;
-    }
+  async importFromLocation(query: NearbyQueryDto): Promise<ImportResponseDto> {
+    const radiusMeters = this.resolveRadiusMeters(query);
+    const bbox = this.bboxFromCenter(query.lat, query.lng, radiusMeters);
 
-    this.logger.log('Database is empty — seeding from Overpass API...');
-    try {
-      await this.importFromOverpass(33.7, -118.7, 34.3, -118.1);
-    } catch (error) {
-      this.logger.error('Failed to seed from Overpass — server will start without data', error);
-    }
+    this.logger.log(
+      `Importing dog parks near (${query.lat}, ${query.lng}) within ${radiusMeters}m`,
+    );
+
+    const imported = await this.importFromOverpass(
+      bbox.south,
+      bbox.west,
+      bbox.north,
+      bbox.east,
+    );
+
+    return { imported, bbox };
   }
 
   /**
@@ -120,16 +122,7 @@ export class DogParksService implements OnModuleInit {
    * which we convert to both miles and km for the response.
    */
   async findNearby(query: NearbyQueryDto): Promise<DogParkResponseDto[]> {
-    // Resolve the search radius to meters
-    // Priority: radiusKm → radiusMiles → default 10 miles
-    let radiusMeters: number;
-    if (query.radiusKm !== undefined) {
-      radiusMeters = query.radiusKm * METERS_PER_KM;
-    } else if (query.radiusMiles !== undefined) {
-      radiusMeters = query.radiusMiles * METERS_PER_MILE;
-    } else {
-      radiusMeters = DEFAULT_RADIUS_MILES * METERS_PER_MILE;
-    }
+    const radiusMeters = this.resolveRadiusMeters(query);
 
     // Raw query using TypeORM's query builder
     // We need raw SQL here because PostGIS functions aren't part of TypeORM's
@@ -160,6 +153,38 @@ export class DogParksService implements OnModuleInit {
       const distanceMeters = parseFloat(results.raw[index].distance_meters);
       return this.toResponse(park, distanceMeters);
     });
+  }
+
+  /**
+   * Builds a rectangular bounding box from a center point and search radius.
+   * Overpass expects south, west, north, east — not a center + radius.
+   */
+  private bboxFromCenter(
+    lat: number,
+    lng: number,
+    radiusMeters: number,
+  ): ImportResponseDto['bbox'] {
+    const deltaLat = radiusMeters / METERS_PER_DEGREE_LAT;
+    const deltaLng =
+      radiusMeters /
+      (METERS_PER_DEGREE_LAT * Math.cos((lat * Math.PI) / 180));
+
+    return {
+      south: lat - deltaLat,
+      west: lng - deltaLng,
+      north: lat + deltaLat,
+      east: lng + deltaLng,
+    };
+  }
+
+  private resolveRadiusMeters(query: NearbyQueryDto): number {
+    if (query.radiusKm !== undefined) {
+      return query.radiusKm * METERS_PER_KM;
+    }
+    if (query.radiusMiles !== undefined) {
+      return query.radiusMiles * METERS_PER_MILE;
+    }
+    return DEFAULT_RADIUS_MILES * METERS_PER_MILE;
   }
 
   /**
