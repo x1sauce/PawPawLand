@@ -10,16 +10,21 @@ struct ExploreMapView: View {
     var body: some View {
         ZStack(alignment: .top) {
             mapLayer
-            fogOverlay
+            discoveryOverlay
             VStack(spacing: 0) {
                 exploreHeader
+                if let event = activeEventBanner {
+                    ParkEventBanner(event: event)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
+                }
                 Spacer()
                 bottomOverlay
             }
             loadingOverlay
             errorOverlay
         }
-        .background(PawColors.background)
+        .background(PawColors.heroGradient)
         .sheet(isPresented: $showParkDetail) {
             if let park = previewPark {
                 ParkDetailView(park: park)
@@ -30,11 +35,17 @@ struct ExploreMapView: View {
         }
     }
 
+    private var activeEventBanner: ParkEvent? {
+        guard let park = previewPark else { return appState.parkEvents.first(where: \.isActive) }
+        return appState.event(for: park)
+    }
+
     private func loadInitialParks() async {
         await appState.loadParksNearUser()
         updateCamera()
         if previewPark == nil {
-            previewPark = appState.parks.first
+            previewPark = appState.parks.first(where: { appState.visitCount(for: $0) > 0 })
+                ?? appState.parks.first
         }
     }
 
@@ -49,10 +60,13 @@ struct ExploreMapView: View {
             UserAnnotation()
 
             ForEach(appState.parks) { park in
+                let level = appState.discoveryLevel(for: park)
                 Annotation(park.name, coordinate: park.coordinate, anchor: .bottom) {
                     ParkPinView(
-                        isVisited: appState.isVisited(park),
-                        isSelected: previewPark?.id == park.id
+                        level: level,
+                        isSelected: previewPark?.id == park.id,
+                        hasEvent: appState.event(for: park) != nil,
+                        pin: appState.pin(for: park)
                     )
                     .onTapGesture {
                         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
@@ -60,35 +74,43 @@ struct ExploreMapView: View {
                             cameraPosition = .region(
                                 MKCoordinateRegion(
                                     center: park.coordinate,
-                                    span: MKCoordinateSpan(latitudeDelta: 0.04, longitudeDelta: 0.04)
+                                    span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
                                 )
                             )
                         }
                     }
                 }
                 .tag(park)
-            }
 
-            ForEach(visitedParks) { park in
-                MapCircle(center: park.coordinate, radius: 900)
-                    .foregroundStyle(PawColors.goldGlow)
-                    .stroke(PawColors.gold.opacity(0.3), lineWidth: 1)
+                if level != .unknown {
+                    MapCircle(center: park.coordinate, radius: glowRadius(for: level))
+                        .foregroundStyle(PawColors.discoveryGlow(for: level).opacity(level.glowOpacity))
+                        .stroke(PawColors.discoveryGlow(for: level).opacity(0.5), lineWidth: 1)
+                }
             }
         }
-        .mapStyle(.standard(elevation: .flat, emphasis: .muted, pointsOfInterest: .excludingAll, showsTraffic: false))
+        .mapStyle(.imagery(elevation: .realistic))
         .mapControlVisibility(.hidden)
         .colorScheme(.dark)
+        .saturation(0.55)
+        .contrast(1.08)
         .ignoresSafeArea()
     }
 
-    private var visitedParks: [DogPark] {
-        appState.parks.filter { appState.isVisited($0) }
+    private func glowRadius(for level: DiscoveryLevel) -> Double {
+        switch level {
+        case .unknown: return 0
+        case .discovered: return 500
+        case .familiar: return 750
+        case .regular: return 1000
+        case .homeTurf: return 1300
+        }
     }
 
-    private var fogOverlay: some View {
-        FogOfWarOverlay(
+    private var discoveryOverlay: some View {
+        IllustratedDiscoveryOverlay(
             parks: appState.parks,
-            visitedParkIds: appState.visitedParkIds,
+            visitCount: { appState.visitCount(for: $0) },
             mapCenter: appState.mapCenter,
             mapSpan: appState.mapSpan
         )
@@ -97,47 +119,48 @@ struct ExploreMapView: View {
     }
 
     private var exploreHeader: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 10) {
+            DogAvatarView(profile: appState.dogProfile, size: 42, showLevel: false)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(appState.dogProfile.name)
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                Text("\(appState.selectedCity) · Lv.\(appState.dogProfile.level)")
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .foregroundStyle(PawColors.textSecondary)
+            }
+
+            Spacer()
+
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(String(format: "%.0f%%", appState.mapExploredPercentage))
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundStyle(PawColors.mint)
+                Text("map lit")
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundStyle(PawColors.textTertiary)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(PawColors.surface.opacity(0.92))
+            .clipShape(Capsule())
+
             Button {
                 Task {
                     await appState.loadParksNearUser()
                     updateCamera()
-                    previewPark = appState.parks.first
                 }
             } label: {
                 Image(systemName: "arrow.clockwise")
-                    .font(.system(size: 18, weight: .medium))
-                    .foregroundStyle(PawColors.textPrimary)
-                    .frame(width: 44, height: 44)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(PawColors.gold)
+                    .frame(width: 40, height: 40)
                     .background(PawColors.surface.opacity(0.92))
                     .clipShape(Circle())
             }
             .disabled(appState.isLoadingParks)
-
-            Spacer()
-
-            HStack(spacing: 6) {
-                Image(systemName: "location.fill")
-                    .font(.system(size: 12))
-                    .foregroundStyle(PawColors.gold)
-                Text(appState.selectedCity)
-                    .font(.system(size: 15, weight: .semibold, design: .rounded))
-            }
-            .foregroundStyle(PawColors.textPrimary)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .background(PawColors.surface.opacity(0.92))
-            .clipShape(Capsule())
-
-            Spacer()
-
-            Text("\(Int(appState.searchRadiusMiles)) mi")
-                .font(.system(size: 13, weight: .semibold, design: .rounded))
-                .foregroundStyle(PawColors.textSecondary)
-                .frame(width: 44, height: 44)
-                .background(PawColors.surface.opacity(0.92))
-                .clipShape(Circle())
         }
+        .foregroundStyle(PawColors.textPrimary)
         .padding(.horizontal, 16)
         .padding(.top, 8)
     }
@@ -146,15 +169,18 @@ struct ExploreMapView: View {
     private var loadingOverlay: some View {
         if appState.isLoadingParks {
             VStack(spacing: 12) {
-                ProgressView()
-                    .tint(PawColors.gold)
-                Text("Finding dog parks near you...")
-                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                Text(appState.dogProfile.mood.emoji)
+                    .font(.system(size: 40))
+                Text("Lucky is sniffing out parks...")
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .foregroundStyle(PawColors.textPrimary)
+                Text("Wagging tail in progress")
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
                     .foregroundStyle(PawColors.textSecondary)
             }
-            .padding(20)
-            .background(PawColors.surface.opacity(0.95))
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .padding(24)
+            .background(PawColors.surface.opacity(0.96))
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         }
     }
 
@@ -162,23 +188,25 @@ struct ExploreMapView: View {
     private var errorOverlay: some View {
         if let message = appState.parksErrorMessage, !appState.isLoadingParks {
             VStack(spacing: 12) {
-                Image(systemName: "wifi.exclamationmark")
-                    .font(.system(size: 24))
-                    .foregroundStyle(PawColors.gold)
+                Text("🐾")
+                    .font(.system(size: 32))
+                Text("Lucky couldn't reach the park network")
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .foregroundStyle(PawColors.textPrimary)
                 Text(message)
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
                     .foregroundStyle(PawColors.textSecondary)
                     .multilineTextAlignment(.center)
-                Button("Try Again") {
+                Button("Sniff again") {
                     Task { await loadInitialParks() }
                 }
-                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                .font(.system(size: 14, weight: .bold, design: .rounded))
                 .foregroundStyle(PawColors.gold)
             }
             .padding(20)
             .frame(maxWidth: 300)
-            .background(PawColors.surface.opacity(0.95))
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(PawColors.surface.opacity(0.96))
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
     }
 
@@ -187,6 +215,8 @@ struct ExploreMapView: View {
             if let park = previewPark {
                 ParkPreviewCard(
                     park: park,
+                    level: appState.discoveryLevel(for: park),
+                    pin: appState.pin(for: park),
                     isVisited: appState.isVisited(park),
                     onTap: { showParkDetail = true },
                     onCheckIn: { appState.beginCheckIn(for: park) }
@@ -194,12 +224,12 @@ struct ExploreMapView: View {
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
 
-            if !appState.parks.isEmpty {
+            if appState.unvisitedNearbyCount > 0 {
                 HStack(spacing: 6) {
-                    Image(systemName: "diamond.fill")
-                        .font(.system(size: 10))
-                        .foregroundStyle(PawColors.gold)
-                    Text("\(appState.unvisitedNearbyCount) more parks to explore in this area!")
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 11))
+                        .foregroundStyle(PawColors.lavender)
+                    Text("\(appState.unvisitedNearbyCount) mystery sniff spots still hiding!")
                         .font(.system(size: 13, weight: .medium, design: .rounded))
                         .foregroundStyle(PawColors.textSecondary)
                 }
@@ -213,43 +243,64 @@ struct ExploreMapView: View {
 }
 
 struct ParkPinView: View {
-    let isVisited: Bool
+    let level: DiscoveryLevel
     let isSelected: Bool
+    var hasEvent: Bool = false
+    var pin: ParkPin?
 
     var body: some View {
-        ZStack {
-            if isVisited {
-                Circle()
-                    .fill(PawColors.goldGlow)
-                    .frame(width: isSelected ? 44 : 32, height: isSelected ? 44 : 32)
-            }
-
-            Image(systemName: "pawprint.fill")
-                .font(.system(size: isSelected ? 22 : 16, weight: .semibold))
-                .foregroundStyle(pinColor)
-                .padding(isSelected ? 10 : 7)
-                .background(
+        ZStack(alignment: .topTrailing) {
+            ZStack {
+                if level != .unknown {
                     Circle()
-                        .fill(PawColors.surface)
-                        .shadow(color: pinColor.opacity(0.4), radius: isSelected ? 8 : 4)
-                )
-                .overlay {
-                    Circle()
-                        .stroke(pinColor.opacity(isVisited ? 0.8 : 0.3), lineWidth: isSelected ? 2 : 1)
+                        .fill(PawColors.discoveryGlow(for: level).opacity(level.glowOpacity))
+                        .frame(width: isSelected ? 48 : 36, height: isSelected ? 48 : 36)
                 }
+
+                Group {
+                    if let pin, pin.isUnlocked {
+                        ParkPinBadge(pin: pin, size: isSelected ? 40 : 32)
+                    } else {
+                        Image(systemName: level == .unknown ? "questionmark.circle.fill" : "pawprint.fill")
+                            .font(.system(size: isSelected ? 20 : 15, weight: .bold))
+                            .foregroundStyle(pinColor)
+                            .padding(isSelected ? 10 : 8)
+                            .background(Circle().fill(PawColors.surface))
+                            .overlay {
+                                Circle().stroke(pinColor.opacity(0.5), lineWidth: isSelected ? 2 : 1)
+                            }
+                    }
+                }
+            }
+            .scaleEffect((isSelected ? 1.12 : 1) * level.pinScale)
+            .opacity(level == .unknown ? 0.55 : 1)
+
+            if hasEvent {
+                Circle()
+                    .fill(PawColors.coral)
+                    .frame(width: 12, height: 12)
+                    .overlay { Circle().stroke(PawColors.surface, lineWidth: 2) }
+                    .offset(x: 4, y: -4)
+            }
         }
-        .scaleEffect(isSelected ? 1.1 : 1)
         .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
     }
 
     private var pinColor: Color {
-        if isVisited { return PawColors.gold }
-        return PawColors.unvisitedPin
+        switch level {
+        case .unknown: return PawColors.unvisitedPin
+        case .discovered: return PawColors.mint
+        case .familiar: return PawColors.sky
+        case .regular: return PawColors.gold
+        case .homeTurf: return PawColors.coral
+        }
     }
 }
 
 struct ParkPreviewCard: View {
     let park: DogPark
+    let level: DiscoveryLevel
+    let pin: ParkPin?
     let isVisited: Bool
     let onTap: () -> Void
     let onCheckIn: () -> Void
@@ -257,53 +308,52 @@ struct ParkPreviewCard: View {
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 14) {
-                ParkThumbnail(seed: park.imageSeed, size: 64)
+                if let pin, pin.isUnlocked {
+                    ParkPinBadge(pin: pin, size: 58)
+                } else {
+                    ParkThumbnail(seed: park.imageSeed, size: 58)
+                }
 
                 VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        Text(park.name)
-                            .font(.system(size: 17, weight: .semibold, design: .rounded))
-                            .foregroundStyle(PawColors.textPrimary)
-                            .lineLimit(1)
+                    Text(park.name)
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                        .foregroundStyle(PawColors.textPrimary)
+                        .lineLimit(1)
 
-                        if isVisited {
-                            Image(systemName: "checkmark.seal.fill")
-                                .font(.system(size: 14))
-                                .foregroundStyle(PawColors.gold)
-                        }
-                    }
+                    Text(level.label)
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundStyle(PawColors.discoveryGlow(for: level))
 
                     Text(park.distanceLabel ?? park.neighborhood)
                         .font(.system(size: 13, weight: .medium, design: .rounded))
                         .foregroundStyle(PawColors.textSecondary)
-
-                    HStack(spacing: 4) {
-                        Image(systemName: "mappin.and.ellipse")
-                            .font(.system(size: 11))
-                        Text(park.featureSummary)
-                            .lineLimit(1)
-                    }
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
-                    .foregroundStyle(PawColors.textTertiary)
                 }
 
                 Spacer(minLength: 0)
 
                 Button(action: onCheckIn) {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 28))
-                        .foregroundStyle(PawColors.gold)
+                    VStack(spacing: 4) {
+                        Image(systemName: "camera.fill")
+                            .font(.system(size: 18, weight: .semibold))
+                        Text("Moment")
+                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                    }
+                    .foregroundStyle(Color(red: 0.12, green: 0.08, blue: 0.02))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .background(PawColors.goldButtonGradient)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 }
                 .buttonStyle(.plain)
             }
             .padding(16)
-            .background(PawColors.surface.opacity(0.95))
+            .background(PawColors.surface.opacity(0.96))
             .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .stroke(PawColors.surfaceBorder, lineWidth: 1)
+                    .stroke(PawColors.discoveryGlow(for: level).opacity(0.35), lineWidth: 1)
             }
-            .shadow(color: .black.opacity(0.35), radius: 20, y: 8)
+            .shadow(color: .black.opacity(0.30), radius: 18, y: 8)
         }
         .buttonStyle(.plain)
     }

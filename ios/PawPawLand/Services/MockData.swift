@@ -219,4 +219,136 @@ enum MockData {
     static var mostPopularHourLabel: String {
         "5–7 PM"
     }
+
+    static let dogProfile = DogProfile(
+        name: userDogName,
+        level: 7,
+        xp: 340,
+        mood: .happy
+    )
+
+    static let activityGoals = ActivityGoals(
+        walksThisWeek: 4,
+        walksGoal: 5,
+        newParksThisWeek: 2,
+        newParksGoal: 3,
+        momentsSharedThisWeek: 3,
+        momentsGoal: 5
+    )
+
+    static let demoVisitCounts: [UUID: Int] = [
+        parks[0].id: 8,
+        parks[1].id: 3,
+        parks[2].id: 5,
+        parks[4].id: 1,
+        parks[6].id: 2,
+    ]
+
+    static let parkPins: [ParkPin] = parks.enumerated().map { index, park in
+        let unlocked = demoVisitCounts[park.id, default: 0] > 0
+        return ParkPin(
+            id: UUID(),
+            parkId: park.id,
+            parkName: park.name,
+            title: pinTitles[index % pinTitles.count],
+            iconName: pinIcons[index % pinIcons.count],
+            tintHex: pinTints[index % pinTints.count],
+            isUnlocked: unlocked,
+            unlockedAt: unlocked ? Date().addingTimeInterval(-86400 * Double(index + 1)) : nil
+        )
+    }
+
+    static let parkEvents: [ParkEvent] = [
+        ParkEvent(
+            id: UUID(),
+            parkId: parks[1].id,
+            dogName: "Biscuit",
+            breed: "Corgi",
+            vibe: "Wants to play fetch!",
+            expiresAt: Date().addingTimeInterval(3600 * 4)
+        ),
+        ParkEvent(
+            id: UUID(),
+            parkId: parks[3].id,
+            dogName: "Mochi",
+            breed: "Shiba Inu",
+            vibe: "Chillin' by the water bowl",
+            expiresAt: Date().addingTimeInterval(3600 * 2)
+        ),
+    ]
+
+    static let socialPosts: [SocialPost] = [
+        SocialPost(
+            id: UUID(),
+            parkName: parks[0].name,
+            imageSeed: parks[0].imageSeed,
+            caption: "Lucky made 3 new friends at the lake today 🐾",
+            timestamp: Date().addingTimeInterval(-3600)
+        ),
+        SocialPost(
+            id: UUID(),
+            parkName: parks[2].name,
+            imageSeed: parks[2].imageSeed,
+            caption: "Sunset zoomies unlocked ✨",
+            timestamp: Date().addingTimeInterval(-86400)
+        ),
+        SocialPost(
+            id: UUID(),
+            parkName: parks[1].name,
+            imageSeed: parks[1].imageSeed,
+            caption: "Best hike with the best boy",
+            timestamp: Date().addingTimeInterval(-86400 * 3)
+        ),
+    ]
+
+    static let demoCheckIns: [CheckIn] = [
+        CheckIn(
+            id: UUID(),
+            parkId: parks[0].id,
+            parkName: parks[0].name,
+            timestamp: Date().addingTimeInterval(-3600),
+            mood: .loved,
+            photoIdentifier: nil,
+            caption: "Lucky made 3 new friends at the lake today 🐾",
+            imageSeed: parks[0].imageSeed
+        ),
+        CheckIn(
+            id: UUID(),
+            parkId: parks[2].id,
+            parkName: parks[2].name,
+            timestamp: Date().addingTimeInterval(-86400),
+            mood: .zoomies,
+            photoIdentifier: nil,
+            caption: "Sunset zoomies unlocked ✨",
+            imageSeed: parks[2].imageSeed
+        ),
+        CheckIn(
+            id: UUID(),
+            parkId: parks[1].id,
+            parkName: parks[1].name,
+            timestamp: Date().addingTimeInterval(-86400 * 3),
+            mood: .happy,
+            photoIdentifier: nil,
+            caption: "Best hike with the best boy",
+            imageSeed: parks[1].imageSeed
+        ),
+    ]
+
+    private static let pinTitles = [
+        "Silver Lake Star", "Canyon Scout", "Griffith Gem", "Basin Bolt",
+        "Elysian Echo", "Venice Voyager", "Hermon Heart", "Lacy Leaf",
+        "Hollywood Howl", "Downtown Dazzle", "Cheviot Charm", "Canyon Crown",
+    ]
+
+    private static let pinIcons = [
+        "star.fill", "leaf.fill", "mountain.2.fill", "bolt.fill",
+        "sparkles", "water.waves", "heart.fill", "tree.fill",
+        "camera.fill", "building.2.fill", "pawprint.fill", "flame.fill",
+    ]
+
+    private static let pinTints = [
+        "FFD166", "88D498", "7CB9FF", "FF8A80",
+        "CE93D8", "4DD0E1", "FFB74D", "A5D6A7",
+        "F48FB1", "90CAF9", "FFE082", "FFAB91",
+    ]
 }

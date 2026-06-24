@@ -7,6 +7,8 @@ struct CheckIn: Identifiable, Codable, Hashable {
     let timestamp: Date
     let mood: VisitMood?
     let photoIdentifier: String?
+    let caption: String?
+    let imageSeed: String?
 
     var dayKey: String {
         let formatter = DateFormatter()

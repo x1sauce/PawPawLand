@@ -89,23 +89,35 @@ struct PeakTimeData: Identifiable {
 }
 
 enum VisitMood: String, CaseIterable, Codable {
-    case sad, neutral, happy, loved
+    case chill, curious, happy, zoomies, loved
 
     var emoji: String {
         switch self {
-        case .sad: return "😢"
-        case .neutral: return "😐"
-        case .happy: return "😊"
+        case .chill: return "😌"
+        case .curious: return "👃"
+        case .happy: return "🐶"
+        case .zoomies: return "🌀"
         case .loved: return "🥰"
         }
     }
 
     var label: String {
         switch self {
-        case .sad: return "Rough"
-        case .neutral: return "Okay"
-        case .happy: return "Great"
-        case .loved: return "Amazing"
+        case .chill: return "Chill vibes"
+        case .curious: return "So many sniffs"
+        case .happy: return "Tail wags"
+        case .zoomies: return "Zoomies!"
+        case .loved: return "Best day ever"
+        }
+    }
+
+    var dogMood: DogMood {
+        switch self {
+        case .chill: return .sleepy
+        case .curious: return .curious
+        case .happy: return .happy
+        case .zoomies: return .zoomies
+        case .loved: return .proud
         }
     }
 }

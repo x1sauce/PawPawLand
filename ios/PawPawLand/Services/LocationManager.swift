@@ -32,6 +32,14 @@ final class LocationManager: NSObject {
         lastError = nil
         requestPermissionIfNeeded()
 
+        #if targetEnvironment(simulator)
+        // Simulator defaults to Cupertino/SF — use LA for PawPawLand demo & dev.
+        let laDemo = MockData.laCenter
+        currentLocation = laDemo
+        areaLabel = MockData.city
+        return laDemo
+        #endif
+
         guard CLLocationManager.locationServicesEnabled() else {
             lastError = "Location services are disabled."
             return nil

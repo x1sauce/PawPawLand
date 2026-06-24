@@ -5,6 +5,7 @@ struct CheckInView: View {
     @Environment(AppState.self) private var appState
     @State private var selectedMood: VisitMood?
     @State private var selectedPhoto: PhotosPickerItem?
+    @State private var caption = ""
     @State private var showParkPicker = false
 
     private var park: DogPark? {
@@ -14,44 +15,23 @@ struct CheckInView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 28) {
+                VStack(spacing: 24) {
+                    headerSection
                     if let park {
-                        parkHeader(park)
+                        parkChip(park)
                     }
-
-                    dogPhotoSection
-
+                    photoMomentSection
+                    captionSection
                     moodSection
-
-                    if let park {
-                        PawCard {
-                            HStack(spacing: 12) {
-                                ParkThumbnail(seed: park.imageSeed, size: 48)
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(park.name)
-                                        .font(.system(size: 16, weight: .semibold, design: .rounded))
-                                        .foregroundStyle(PawColors.textPrimary)
-                                    Text(park.neighborhood)
-                                        .font(.system(size: 13, weight: .medium, design: .rounded))
-                                        .foregroundStyle(PawColors.textSecondary)
-                                }
-                                Spacer()
-                                Button("Change") { showParkPicker = true }
-                                    .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                    .foregroundStyle(PawColors.gold)
-                            }
-                        }
+                    PawButton(title: "Share this moment", icon: "sparkles") {
+                        appState.completeCheckIn(mood: selectedMood, caption: caption.isEmpty ? nil : caption)
                     }
-
-                    PawButton(title: "Check In", icon: "checkmark.circle.fill") {
-                        appState.completeCheckIn(mood: selectedMood)
-                    }
-                    .padding(.top, 8)
+                    .padding(.top, 4)
                 }
                 .padding(20)
             }
-            .background(PawColors.background)
-            .navigationTitle("Check In")
+            .background(PawColors.heroGradient)
+            .navigationTitle("Paw Moment")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -74,89 +54,115 @@ struct CheckInView: View {
         .preferredColorScheme(.dark)
     }
 
-    private func parkHeader(_ park: DogPark) -> some View {
-        VStack(spacing: 6) {
-            Text("Checking in at")
-                .font(.system(size: 14, weight: .medium, design: .rounded))
-                .foregroundStyle(PawColors.textTertiary)
-            Text(park.name)
+    private var headerSection: some View {
+        VStack(spacing: 12) {
+            DogAvatarView(profile: appState.dogProfile, size: 96)
+            Text("What did \(appState.dogProfile.name) think?")
                 .font(.system(size: 22, weight: .bold, design: .rounded))
                 .foregroundStyle(PawColors.textPrimary)
+            Text("Drop a photo or a cozy note from today's adventure")
+                .font(.system(size: 14, weight: .medium, design: .rounded))
+                .foregroundStyle(PawColors.textSecondary)
                 .multilineTextAlignment(.center)
         }
     }
 
-    private var dogPhotoSection: some View {
-        VStack(spacing: 12) {
-            ZStack(alignment: .bottomTrailing) {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [PawColors.surfaceElevated, PawColors.surface],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 140, height: 140)
-                    .overlay {
-                        Image(systemName: "dog.fill")
-                            .font(.system(size: 56))
-                            .foregroundStyle(PawColors.gold.opacity(0.8))
-                    }
-                    .overlay {
-                        Circle()
-                            .stroke(PawColors.gold, lineWidth: 3)
-                            .glowRing(color: PawColors.gold, radius: 6)
-                    }
-
-                PhotosPicker(selection: $selectedPhoto, matching: .images) {
-                    Image(systemName: "camera.fill")
-                        .font(.system(size: 14, weight: .semibold))
+    private func parkChip(_ park: DogPark) -> some View {
+        PawCard {
+            HStack(spacing: 12) {
+                ParkThumbnail(seed: park.imageSeed, size: 48)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(park.name)
+                        .font(.system(size: 16, weight: .semibold, design: .rounded))
                         .foregroundStyle(PawColors.textPrimary)
-                        .frame(width: 36, height: 36)
-                        .background(PawColors.surfaceElevated)
-                        .clipShape(Circle())
-                        .overlay { Circle().stroke(PawColors.surfaceBorder, lineWidth: 1) }
+                    Text(appState.discoveryLevel(for: park).label)
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundStyle(PawColors.mint)
                 }
-                .offset(x: 4, y: 4)
+                Spacer()
+                Button("Change") { showParkPicker = true }
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .foregroundStyle(PawColors.gold)
             }
+        }
+    }
 
-            Text(MockData.userDogName)
-                .font(.system(size: 17, weight: .semibold, design: .rounded))
+    private var photoMomentSection: some View {
+        PhotosPicker(selection: $selectedPhoto, matching: .images) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(PawColors.surface)
+                    .frame(height: 200)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                            .stroke(PawColors.gold.opacity(0.35), style: StrokeStyle(lineWidth: 2, dash: [8]))
+                    }
+
+                VStack(spacing: 10) {
+                    Image(systemName: "camera.fill")
+                        .font(.system(size: 32))
+                        .foregroundStyle(PawColors.gold)
+                    Text("Add a walk photo")
+                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .foregroundStyle(PawColors.textPrimary)
+                    Text("BeReal vibes — capture the moment")
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .foregroundStyle(PawColors.textSecondary)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var captionSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Park thoughts")
+                .font(.system(size: 15, weight: .semibold, design: .rounded))
                 .foregroundStyle(PawColors.textPrimary)
+            TextField("Lucky loved the mud puddle near...", text: $caption, axis: .vertical)
+                .lineLimit(3 ... 6)
+                .padding(14)
+                .background(PawColors.surface)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(PawColors.surfaceBorder, lineWidth: 1)
+                }
         }
     }
 
     private var moodSection: some View {
-        VStack(spacing: 16) {
-            Text("How was the visit today?")
-                .font(.system(size: 17, weight: .semibold, design: .rounded))
+        VStack(spacing: 14) {
+            Text("How's \(appState.dogProfile.name) feeling?")
+                .font(.system(size: 16, weight: .semibold, design: .rounded))
                 .foregroundStyle(PawColors.textPrimary)
 
-            HStack(spacing: 16) {
-                ForEach(VisitMood.allCases, id: \.self) { mood in
-                    Button {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                            selectedMood = mood
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    ForEach(VisitMood.allCases, id: \.self) { mood in
+                        Button {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                selectedMood = mood
+                            }
+                        } label: {
+                            VStack(spacing: 8) {
+                                Text(mood.emoji)
+                                    .font(.system(size: selectedMood == mood ? 34 : 28))
+                                Text(mood.label)
+                                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(selectedMood == mood ? PawColors.gold : PawColors.textTertiary)
+                            }
+                            .frame(width: 88)
+                            .padding(.vertical, 12)
+                            .background(selectedMood == mood ? PawColors.gold.opacity(0.14) : PawColors.surface)
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .stroke(selectedMood == mood ? PawColors.gold.opacity(0.5) : PawColors.surfaceBorder, lineWidth: 1)
+                            }
                         }
-                    } label: {
-                        VStack(spacing: 6) {
-                            Text(mood.emoji)
-                                .font(.system(size: selectedMood == mood ? 36 : 30))
-                            Text(mood.label)
-                                .font(.system(size: 11, weight: .medium, design: .rounded))
-                                .foregroundStyle(selectedMood == mood ? PawColors.gold : PawColors.textTertiary)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(selectedMood == mood ? PawColors.gold.opacity(0.12) : PawColors.surface)
-                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(selectedMood == mood ? PawColors.gold.opacity(0.5) : PawColors.surfaceBorder, lineWidth: 1)
-                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
             }
         }
@@ -180,7 +186,7 @@ struct ParkPickerSheet: View {
                         VStack(alignment: .leading) {
                             Text(park.name)
                                 .foregroundStyle(PawColors.textPrimary)
-                            Text(park.neighborhood)
+                            Text(appState.discoveryLevel(for: park).label)
                                 .font(.caption)
                                 .foregroundStyle(PawColors.textSecondary)
                         }
@@ -190,7 +196,7 @@ struct ParkPickerSheet: View {
             }
             .scrollContentBackground(.hidden)
             .background(PawColors.background)
-            .navigationTitle("Choose Park")
+            .navigationTitle("Pick a park")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {

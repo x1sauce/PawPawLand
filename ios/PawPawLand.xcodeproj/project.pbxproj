@@ -29,6 +29,9 @@
 		AA0000010000000000000014 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000014 /* Assets.xcassets */; };
 		AA0000010000000000000015 /* DogParkAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000016 /* DogParkAPI.swift */; };
 		AA0000010000000000000017 /* LocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000017 /* LocationManager.swift */; };
+		AA0000010000000000000018 /* DogProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000018 /* DogProfile.swift */; };
+		AA0000010000000000000019 /* GameComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000019 /* GameComponents.swift */; };
+		AA000001000000000000001A /* IllustratedDiscoveryOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000001000000000000001A /* IllustratedDiscoveryOverlay.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -55,6 +58,9 @@
 		BB0000010000000000000015 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		BB0000010000000000000016 /* DogParkAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DogParkAPI.swift; sourceTree = "<group>"; };
 		BB0000010000000000000017 /* LocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationManager.swift; sourceTree = "<group>"; };
+		BB0000010000000000000018 /* DogProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DogProfile.swift; sourceTree = "<group>"; };
+		BB0000010000000000000019 /* GameComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameComponents.swift; sourceTree = "<group>"; };
+		BB000001000000000000001A /* IllustratedDiscoveryOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IllustratedDiscoveryOverlay.swift; sourceTree = "<group>"; };
 		CC0000010000000000000001 /* PawPawLand.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PawPawLand.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -115,13 +121,14 @@
 			path = Theme;
 			sourceTree = "<group>";
 		};
-		EE0000010000000000000006 /* Models */ = {
+        EE0000010000000000000006 /* Models */ = {
 			isa = PBXGroup;
 			children = (
 				BB0000010000000000000004 /* DogPark.swift */,
 				BB0000010000000000000005 /* CheckIn.swift */,
 				BB0000010000000000000006 /* Badge.swift */,
 				BB0000010000000000000007 /* ExplorationStats.swift */,
+				BB0000010000000000000018 /* DogProfile.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -166,6 +173,7 @@
 			children = (
 				BB000001000000000000000A /* PawComponents.swift */,
 				BB000001000000000000000B /* ChartsAndBadges.swift */,
+				BB0000010000000000000019 /* GameComponents.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -175,6 +183,7 @@
 			children = (
 				BB000001000000000000000C /* ExploreMapView.swift */,
 				BB000001000000000000000D /* FogOfWarOverlay.swift */,
+				BB000001000000000000001A /* IllustratedDiscoveryOverlay.swift */,
 			);
 			path = Explore;
 			sourceTree = "<group>";
@@ -309,6 +318,9 @@
 				AA0000010000000000000013 /* MainTabView.swift in Sources */,
 				AA0000010000000000000015 /* DogParkAPI.swift in Sources */,
 				AA0000010000000000000017 /* LocationManager.swift in Sources */,
+				AA0000010000000000000018 /* DogProfile.swift in Sources */,
+				AA0000010000000000000019 /* GameComponents.swift in Sources */,
+				AA000001000000000000001A /* IllustratedDiscoveryOverlay.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

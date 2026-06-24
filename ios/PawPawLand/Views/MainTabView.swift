@@ -33,6 +33,8 @@ struct MainTabView: View {
                     }
             }
             .tint(PawColors.gold)
+            .toolbarBackground(PawColors.surface.opacity(0.95), for: .tabBar)
+            .toolbarBackground(.visible, for: .tabBar)
 
             if appState.showUnlockCelebration, let park = appState.newlyUnlockedPark {
                 NewParkUnlockedView(park: park)

@@ -185,7 +185,7 @@ struct ParkDetailView: View {
     private var bottomBar: some View {
         VStack(spacing: 0) {
             Divider().background(PawColors.surfaceBorder)
-            PawButton(title: "Check In", icon: "location.fill") {
+            PawButton(title: "Share a moment", icon: "camera.fill") {
                 dismiss()
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
                     appState.beginCheckIn(for: park)
